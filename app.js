@@ -501,6 +501,13 @@ function backHome() {
   setStatus("Elige cómo jugar", "connected");
 }
 
+function leaveCurrentMatch() {
+  if (game.mode === "online" && !window.confirm("¿Salir de la partida? La sala online se cerrará para ambos jugadores.")) {
+    return;
+  }
+  backHome();
+}
+
 document.getElementById("local-mode").addEventListener("click", () => {
   menuResult.hidden = true;
   startLocalGame();
@@ -524,7 +531,8 @@ createForm.addEventListener("submit", (event) => {
   menuResult.hidden = true;
   createOnlineRoom(name, duration);
 });
-document.getElementById("lobby-back").addEventListener("click", backHome);
+document.getElementById("lobby-back").addEventListener("click", leaveCurrentMatch);
+document.getElementById("match-back").addEventListener("click", leaveCurrentMatch);
 startButton.addEventListener("click", () => {
   if (game.player === 1 && connectedPlayers === 2 && websocket?.readyState === WebSocket.OPEN) {
     websocket.send(JSON.stringify({ type: "start" }));

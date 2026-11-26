@@ -126,6 +126,17 @@ main { width: min(100%, 1040px); }
   font-size: 12px;
 }
 
+.back-button::first-letter {
+  color: #21dfc0;
+  font-size: 16px;
+}
+
+.match-back {
+  margin: 0 0 8px;
+  font-size: 14px;
+  font-weight: 750;
+}
+
 .back-button:hover:not(:disabled) {
   transform: none;
   border: 0;
