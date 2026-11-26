@@ -33,7 +33,7 @@ npm start
 
 `0.0.0.0` permite conexiones de otros dispositivos en la red local; usa la dirección IP local del equipo en el navegador. El puerto `0` también se admite para pruebas y hace que el sistema operativo elija un puerto libre.
 
-Para jugar desde Internet, no expongas directamente el servidor Node en una red pública. Despliégalo detrás de un proxy inverso con TLS (HTTPS/WSS), reglas de firewall y un dominio configurado. Configura `PUBLIC_URL` con ese origen HTTPS para que el servidor genere un QR válido. El proxy debe conservar el encabezado `Host` para que la comprobación de origen WebSocket funcione.
+Para jugar desde Internet, no expongas directamente el servidor Node en una red pública. Despliégalo detrás de un proxy inverso con TLS (HTTPS/WSS), reglas de firewall y un dominio configurado. En Render, el servidor usa automáticamente `RENDER_EXTERNAL_URL` para generar un QR válido. En otros proveedores, configura `PUBLIC_URL` con el origen HTTPS. El proxy debe conservar el encabezado `Host` para que la comprobación de origen WebSocket funcione.
 
 Ejemplo de variables de entorno en PowerShell para un servidor publicado:
 
