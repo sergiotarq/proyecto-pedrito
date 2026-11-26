@@ -1,0 +1,14 @@
+{
+  "name": "pong-websocket-multiplayer",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Ping Pong multijugador en tiempo real con Canvas y WebSockets",
+  "scripts": {
+    "start": "node server.js --open",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "qrcode": "^1.5.4",
+    "ws": "^8.18.0"
+  }
+}

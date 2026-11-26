@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#08121c">
+  <title>Ping Pong · Arena</title>
+  <link rel="stylesheet" href="/styles.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <main>
+    <header class="topbar">
+      <h1 class="brand">PING <span>·</span> PONG</h1>
+      <div id="status" data-state="disconnected" role="status" aria-live="polite">
+        Desconectado
+      </div>
+    </header>
+
+    <section id="lobby" class="lobby" aria-labelledby="lobby-title">
+      <div class="lobby-copy">
+        <p class="eyebrow">SALA DE PARTIDA</p>
+        <h2 id="lobby-title">Crea la partida</h2>
+        <p id="lobby-message" role="status" aria-live="polite">
+          Conectando con el servidor...
+        </p>
+        <ol class="steps">
+          <li>Comparte el enlace con tu oponente; con URL pública también puedes usar el QR.</li>
+          <li>Cuando aparezcan los dos jugadores, el creador inicia.</li>
+          <li>Jueguen durante 2 minutos; si hay empate, gana el siguiente punto.</li>
+        </ol>
+        <label class="invite-label" for="join-link">Enlace para invitar al otro jugador</label>
+        <div class="invite-row">
+          <input id="join-link" type="url" readonly aria-label="Enlace de invitación">
+          <button id="copy-link" type="button" disabled>Copiar enlace</button>
+        </div>
+        <p id="public-url-help" class="configuration-help" hidden>
+          Para invitar por Internet, publica el servidor con HTTPS y configura
+          <code>PUBLIC_URL</code>. El QR aparecerá cuando la dirección pública esté configurada.
+        </p>
+        <div class="lobby-actions">
+          <button id="connect" type="button">Conectar</button>
+          <button id="start-match" class="primary" type="button" disabled>Iniciar partida</button>
+        </div>
+      </div>
+      <figure id="qr-card" class="qr-card" hidden>
+        <img id="qr-code" alt="Código QR para unirse a esta partida">
+        <figcaption>Escanea para entrar como jugador 2</figcaption>
+      </figure>
+    </section>
+
+    <section id="match-view" hidden>
+      <div class="match-bar">
+        <span>Tiempo de partida</span>
+        <strong id="timer" role="timer" aria-live="off">02:00</strong>
+        <span id="overtime-label" hidden>Muerte súbita · siguiente punto gana</span>
+      </div>
+      <section class="arena" aria-label="Arena de Ping Pong">
+        <canvas id="game" width="1000" height="600" tabindex="0"
+          aria-label="Tablero. Jugador uno usa W A S D; jugador dos usa las flechas."></canvas>
+      </section>
+
+      <section id="mobile-controls" class="mobile-controls" aria-label="Controles táctiles">
+        <button type="button" data-direction="up" aria-label="Mover arriba">↑</button>
+        <button type="button" data-direction="left" aria-label="Mover izquierda">←</button>
+        <button type="button" data-direction="down" aria-label="Mover abajo">↓</button>
+        <button type="button" data-direction="right" aria-label="Mover derecha">→</button>
+      </section>
+
+      <footer class="controls">
+        <p class="help">
+          Jugador 1: <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd>
+          &nbsp; · &nbsp; Jugador 2: <kbd>↑</kbd> <kbd>←</kbd> <kbd>↓</kbd> <kbd>→</kbd><br>
+          Mantén las teclas o controles táctiles pulsados. Haz clic en la cancha si necesitas recuperar el foco.
+        </p>
+      </footer>
+    </section>
+  </main>
+</body>
+</html>

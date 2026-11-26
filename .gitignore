@@ -1,0 +1,8 @@
+node_modules/
+__pycache__/
+*.py[cod]
+.env
+.env.*
+!.env.example
+npm-debug.log*
+yarn-debug.log*
