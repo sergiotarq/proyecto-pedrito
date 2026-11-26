@@ -12,34 +12,85 @@
   <main>
     <header class="topbar">
       <h1 class="brand">PING <span>·</span> PONG</h1>
-      <div id="status" data-state="disconnected" role="status" aria-live="polite">
-        Desconectado
-      </div>
+      <div id="status" data-state="connected" role="status" aria-live="polite">Elige cómo jugar</div>
     </header>
 
-    <section id="lobby" class="lobby" aria-labelledby="lobby-title">
+    <section id="home-view" class="menu-card" aria-labelledby="home-title">
+      <p class="eyebrow">BIENVENIDO A LA ARENA</p>
+      <h2 id="home-title">¿Cómo quieres jugar?</h2>
+      <div class="mode-grid">
+        <button id="local-mode" class="mode-card" type="button">
+          <span class="mode-icon" aria-hidden="true">⌨</span>
+          <strong>Jugar por 2</strong>
+          <span>Dos jugadores en este dispositivo</span>
+          <small>Jugador 1: W A S D · Jugador 2: flechas</small>
+        </button>
+        <button id="create-mode" class="mode-card" type="button">
+          <span class="mode-icon" aria-hidden="true">＋</span>
+          <strong>Crear partida</strong>
+          <span>Abre una sala online como anfitrión</span>
+          <small>Elige nombre y tiempo de juego</small>
+        </button>
+        <button id="browse-mode" class="mode-card" type="button">
+          <span class="mode-icon" aria-hidden="true">⌕</span>
+          <strong>Buscar partidas</strong>
+          <span>Explora salas esperando un rival</span>
+          <small>Elige una sala para unirte</small>
+        </button>
+      </div>
+      <div class="local-settings">
+        <label for="local-duration">Tiempo de juego para partidas</label>
+        <select id="local-duration" aria-label="Duración de la partida local"></select>
+        <span>El anfitrión elige este tiempo para el modo online.</span>
+      </div>
+      <p id="menu-result" class="menu-result" role="status" aria-live="polite" hidden></p>
+    </section>
+
+    <section id="create-view" class="menu-card form-view" aria-labelledby="create-title" hidden>
+      <button class="back-button" data-back-home type="button">← Menú principal</button>
+      <p class="eyebrow">NUEVA SALA ONLINE</p>
+      <h2 id="create-title">Crear partida</h2>
+      <p class="subtext">Ponle un nombre a tu sala. Los demás podrán encontrarla en Buscar partidas.</p>
+      <form id="create-room-form">
+        <label for="host-name">Nombre del anfitrión</label>
+        <input id="host-name" name="hostName" type="text" maxlength="30" required
+          autocomplete="nickname" placeholder="Ej. Pedro">
+        <label for="create-duration">Tiempo de juego</label>
+        <select id="create-duration" name="duration" required></select>
+        <p class="subtext">Si empatan cuando se acabe el tiempo, se juega muerte súbita.</p>
+        <button class="primary" type="submit">Crear sala y esperar rival</button>
+      </form>
+    </section>
+
+    <section id="rooms-view" class="menu-card" aria-labelledby="rooms-title" hidden>
+      <div class="section-heading">
+        <div>
+          <button class="back-button" data-back-home type="button">← Menú principal</button>
+          <p class="eyebrow">SALAS PÚBLICAS</p>
+          <h2 id="rooms-title">Buscar partidas</h2>
+        </div>
+        <button id="refresh-rooms" type="button">Actualizar</button>
+      </div>
+      <p id="rooms-message" class="subtext" role="status" aria-live="polite">Cargando salas...</p>
+      <div id="room-list" class="room-list"></div>
+    </section>
+
+    <section id="lobby" class="lobby" aria-labelledby="lobby-title" hidden>
       <div class="lobby-copy">
-        <p class="eyebrow">SALA DE PARTIDA</p>
-        <h2 id="lobby-title">Crea la partida</h2>
-        <p id="lobby-message" role="status" aria-live="polite">
-          Conectando con el servidor...
-        </p>
-        <ol class="steps">
-          <li>Comparte el enlace con tu oponente; con URL pública también puedes usar el QR.</li>
-          <li>Cuando aparezcan los dos jugadores, el creador inicia.</li>
-          <li>Jueguen durante 2 minutos; si hay empate, gana el siguiente punto.</li>
-        </ol>
+        <button id="lobby-back" class="back-button" type="button">← Salir al menú</button>
+        <p class="eyebrow">SALA ONLINE</p>
+        <h2 id="lobby-title">Sala de partida</h2>
+        <p id="lobby-message" role="status" aria-live="polite">Conectando...</p>
+        <p id="lobby-details" class="subtext"></p>
         <label class="invite-label" for="join-link">Enlace para invitar al otro jugador</label>
         <div class="invite-row">
           <input id="join-link" type="url" readonly aria-label="Enlace de invitación">
           <button id="copy-link" type="button" disabled>Copiar enlace</button>
         </div>
         <p id="public-url-help" class="configuration-help" hidden>
-          Para invitar por Internet, publica el servidor con HTTPS y configura
-          <code>PUBLIC_URL</code>. El QR aparecerá cuando la dirección pública esté configurada.
+          El QR estará disponible cuando la sala esté creada.
         </p>
         <div class="lobby-actions">
-          <button id="connect" type="button">Conectar</button>
           <button id="start-match" class="primary" type="button" disabled>Iniciar partida</button>
         </div>
       </div>
@@ -59,19 +110,17 @@
         <canvas id="game" width="1000" height="600" tabindex="0"
           aria-label="Tablero. Jugador uno usa W A S D; jugador dos usa las flechas."></canvas>
       </section>
-
       <section id="mobile-controls" class="mobile-controls" aria-label="Controles táctiles">
         <button type="button" data-direction="up" aria-label="Mover arriba">↑</button>
         <button type="button" data-direction="left" aria-label="Mover izquierda">←</button>
         <button type="button" data-direction="down" aria-label="Mover abajo">↓</button>
         <button type="button" data-direction="right" aria-label="Mover derecha">→</button>
       </section>
-
       <footer class="controls">
         <p class="help">
           Jugador 1: <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd>
           &nbsp; · &nbsp; Jugador 2: <kbd>↑</kbd> <kbd>←</kbd> <kbd>↓</kbd> <kbd>→</kbd><br>
-          Mantén las teclas o controles táctiles pulsados. Haz clic en la cancha si necesitas recuperar el foco.
+          En el modo local, cada jugador controla su paleta con sus teclas.
         </p>
       </footer>
     </section>

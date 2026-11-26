@@ -9,6 +9,7 @@ const { WebSocket } = require("ws");
 const root = path.join(__dirname, "..");
 let server;
 let baseUrl;
+let websocketUrl;
 const clients = [];
 
 function waitForServer(child) {
@@ -17,7 +18,6 @@ function waitForServer(child) {
     const timeout = setTimeout(() => {
       reject(new Error(`El servidor no inició a tiempo. Salida: ${output}`));
     }, 5000);
-
     child.stdout.on("data", (chunk) => {
       output += chunk.toString();
       const match = output.match(/http:\/\/127\.0\.0\.1:(\d+)\//);
@@ -75,7 +75,6 @@ function createClient(url) {
       });
     },
   };
-
   ws.on("message", (data) => {
     const message = JSON.parse(data.toString());
     const waiterIndex = waiters.findIndex((waiter) => waiter.matches(message));
@@ -93,7 +92,10 @@ function createRejectedClient(url) {
   const ws = new WebSocket(url);
   clients.push({ ws });
   return new Promise((resolve, reject) => {
-    const timeout = setTimeout(() => reject(new Error("Se esperaba que la conexión fuera rechazada.")), 3000);
+    const timeout = setTimeout(
+      () => reject(new Error("Se esperaba que la conexión fuera rechazada.")),
+      3000,
+    );
     ws.once("message", (data) => {
       clearTimeout(timeout);
       resolve(JSON.parse(data.toString()));
@@ -103,6 +105,12 @@ function createRejectedClient(url) {
       reject(error);
     });
   });
+}
+
+async function getRooms() {
+  const response = await fetch(`${baseUrl}/api/rooms`, { cache: "no-store" });
+  assert.equal(response.status, 200);
+  return (await response.json()).rooms;
 }
 
 before(async () => {
@@ -121,6 +129,7 @@ before(async () => {
   });
   const port = await waitForServer(server);
   baseUrl = `http://127.0.0.1:${port}`;
+  websocketUrl = `ws://127.0.0.1:${port}/ws`;
 });
 
 after(async () => {
@@ -141,77 +150,104 @@ after(async () => {
   }
 });
 
-test("serves the invite QR and enforces the creator-started sudden-death match flow", async () => {
+test("serves the menu, duration choices, and an empty public room list", async () => {
   const page = await fetch(`${baseUrl}/`);
   assert.equal(page.status, 200);
-  assert.match(page.headers.get("content-type"), /text\/html/);
-  assert.match(await page.text(), /start-match/);
+  const html = await page.text();
+  assert.match(html, /Jugar por 2/);
+  assert.match(html, /Crear partida/);
+  assert.match(html, /Buscar partidas/);
 
   const css = await fetch(`${baseUrl}/styles.css`);
-  assert.equal(css.status, 200);
   assert.match(css.headers.get("content-type"), /text\/css/);
   const script = await fetch(`${baseUrl}/app.js`);
-  assert.equal(script.status, 200);
   assert.match(script.headers.get("content-type"), /javascript/);
-  assert.equal((await fetch(`${baseUrl}/missing.js`)).status, 404);
 
-  const configResponse = await fetch(`${baseUrl}/config`);
-  assert.equal(configResponse.status, 200);
-  const config = await configResponse.json();
-  assert.equal(config.matchDurationMs, 1000);
-  assert.equal(new URL(config.joinUrl).origin, "https://pong.example.test");
-  assert.match(new URL(config.joinUrl).searchParams.get("join"), /^[a-f0-9]{24}$/);
+  const config = await (await fetch(`${baseUrl}/config`)).json();
+  assert.deepEqual(config.durationOptions, [1, 2, 3, 5, 10]);
+  assert.equal(config.publicUrl, "https://pong.example.test");
+  assert.deepEqual(await getRooms(), []);
+});
 
-  const qr = await fetch(`${baseUrl}/qr.png`);
-  assert.equal(qr.status, 200);
-  assert.match(qr.headers.get("content-type"), /image\/png/);
-  assert.deepEqual([...new Uint8Array(await qr.arrayBuffer()).slice(0, 8)], [
-    137, 80, 78, 71, 13, 10, 26, 10,
-  ]);
-
-  const websocketUrl = `ws://127.0.0.1:${new URL(baseUrl).port}/ws`;
+test("lists named rooms, joins the selected room, and enforces host start and sudden death", async () => {
   const blocked = new WebSocket(websocketUrl, { origin: "https://example.com" });
   const rejection = await new Promise((resolve) => {
     blocked.once("unexpected-response", (_request, response) => resolve(response.statusCode));
   });
   assert.equal(rejection, 403);
 
-  const joinUrl = new URL(config.joinUrl);
-  const joinToken = joinUrl.searchParams.get("join");
-  const joinBeforeCreator = await createRejectedClient(`${websocketUrl}?join=${joinToken}`);
-  assert.match(joinBeforeCreator.message, /creador debe abrir/);
+  const invalidDuration = await createRejectedClient(
+    `${websocketUrl}?action=create&name=Bad&duration=99`,
+  );
+  assert.match(invalidDuration.message, /duración válida/);
 
-  const creator = createClient(`${websocketUrl}?role=creator`);
-  assert.deepEqual(await creator.waitFor("welcome"), { type: "welcome", player: 1 });
-  const creatorWaiting = await creator.waitFor("waiting");
-  assert.equal(creatorWaiting.connectedPlayers, 1);
+  const hostA = createClient(`${websocketUrl}?action=create&name=Ana&duration=1`);
+  const welcomeA = await hostA.waitFor("welcome");
+  assert.equal(welcomeA.player, 1);
+  assert.equal(welcomeA.roomName, "Ana");
+  assert.equal(welcomeA.durationMinutes, 1);
+  assert.equal((await hostA.waitFor("waiting")).connectedPlayers, 1);
 
-  const joiner = createClient(`${websocketUrl}?join=${joinToken}`);
-  assert.deepEqual(await joiner.waitFor("welcome"), { type: "welcome", player: 2 });
-  const creatorReady = creator.waitFor(
+  const hostB = createClient(`${websocketUrl}?action=create&name=Bruno&duration=5`);
+  const welcomeB = await hostB.waitFor("welcome");
+  assert.equal(welcomeB.roomName, "Bruno");
+  const waitingRooms = await getRooms();
+  assert.deepEqual(waitingRooms.map(({ name }) => name).sort(), ["Ana", "Bruno"]);
+
+  const qr = await fetch(`${baseUrl}/qr.png?room=${welcomeA.roomId}`);
+  assert.equal(qr.status, 200);
+  assert.match(qr.headers.get("content-type"), /image\/png/);
+  assert.deepEqual([...new Uint8Array(await qr.arrayBuffer()).slice(0, 8)], [
+    137, 80, 78, 71, 13, 10, 26, 10,
+  ]);
+
+  const joiner = createClient(`${websocketUrl}?room=${welcomeA.roomId}`);
+  const joined = await joiner.waitFor("welcome");
+  assert.equal(joined.player, 2);
+  assert.equal(joined.roomName, "Ana");
+  const hostReady = hostA.waitFor(
     (message) => message.type === "waiting" && message.connectedPlayers === 2,
   );
   const joinerReady = joiner.waitFor(
     (message) => message.type === "waiting" && message.connectedPlayers === 2,
   );
-  assert.equal((await creatorReady).connectedPlayers, 2);
-  assert.equal((await joinerReady).connectedPlayers, 2);
+  await hostReady;
+  await joinerReady;
+  assert.deepEqual((await getRooms()).map(({ name }) => name), ["Bruno"]);
 
   joiner.ws.send(JSON.stringify({ type: "start" }));
-  assert.match((await joiner.waitFor("error")).message, /Solo el creador/);
-  creator.ws.send(JSON.stringify({ type: "start" }));
-  assert.equal((await creator.waitFor("start")).durationMs, 1000);
+  assert.match((await joiner.waitFor("error")).message, /Solo el anfitrión/);
+  hostA.ws.send(JSON.stringify({ type: "start" }));
+  assert.equal((await hostA.waitFor("start")).durationMs, 1000);
   await joiner.waitFor("start");
-
-  const overtime = await creator.waitFor("overtime", 4000);
+  const overtime = await hostA.waitFor("overtime", 4000);
   assert.match(overtime.message, /muerte súbita/);
-  const winner = await creator.waitFor("game_over", 6000);
+  const winner = await hostA.waitFor("game_over", 6000);
   assert.equal(winner.reason, "sudden_death");
   assert.ok([1, 2].includes(winner.winner));
   assert.equal(winner.score.reduce((sum, score) => sum + score, 0), 1);
   await joiner.waitFor("game_over");
 
+  const hostWaiting = hostA.waitFor(
+    (message) => message.type === "waiting" && message.connectedPlayers === 1,
+  );
   joiner.ws.close();
-  const opponentLeft = await creator.waitFor("opponent_left");
-  assert.match(opponentLeft.message, /desconectó/);
+  await hostWaiting;
+  assert.deepEqual((await getRooms()).map(({ name }) => name), ["Ana", "Bruno"]);
+});
+
+test("closes a waiting room when its host disconnects", async () => {
+  const host = createClient(`${websocketUrl}?action=create&name=Temporal&duration=2`);
+  const welcome = await host.waitFor("welcome");
+  assert.equal((await getRooms()).some((room) => room.id === welcome.roomId), true);
+  const socketClosed = new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => reject(new Error("El anfitrión no cerró su conexión.")), 3000);
+    host.ws.once("close", () => {
+      clearTimeout(timeout);
+      resolve();
+    });
+  });
+  host.ws.close();
+  await socketClosed;
+  assert.equal((await getRooms()).some((room) => room.id === welcome.roomId), false);
 });

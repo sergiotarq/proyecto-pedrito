@@ -1,53 +1,26 @@
 # Ping Pong multijugador
 
-Juego de navegador para dos jugadores, creado con Canvas y WebSockets. El servidor calcula el movimiento, las colisiones y el marcador; los controles se pueden usar con teclado o pantalla táctil.
+Juego de navegador para dos jugadores con Canvas y WebSockets. El menú ofrece tres opciones:
+
+- **Jugar por 2:** ambos juegan en el mismo dispositivo. Jugador 1 usa W/A/S/D y jugador 2 usa las flechas. La duración se elige en el menú.
+- **Crear partida:** el anfitrión elige su nombre y el tiempo de juego, y crea una sala online.
+- **Buscar partidas:** muestra salas públicas que están esperando a un rival. Las salas se actualizan automáticamente y también se pueden actualizar manualmente.
+
+Las duraciones disponibles son 1, 2, 3, 5 y 10 minutos. En todas las modalidades, gana quien tenga más puntos cuando termina el tiempo; si empatan, el siguiente punto decide por muerte súbita. En el modo online, el servidor controla la física, el tiempo y los resultados.
 
 ## Requisitos y ejecución
 
 - Node.js y npm.
-- Instala la dependencia una vez: `npm install`.
-- Inicia el juego con `npm start` y abre `http://127.0.0.1:8080/` en dos pestañas.
+- Instala dependencias con `npm install`.
+- Inicia el juego con `npm start` y abre `http://127.0.0.1:8080/`.
 - Ejecuta las pruebas con `npm test`.
 
-El creador será el jugador 1 y usa **W/A/S/D**; el invitado será el jugador 2 y usa las **flechas**. En dispositivos con pantalla táctil aparecen controles en pantalla. El límite es de dos conexiones simultáneas.
+El proyecto sirve la interfaz desde `index.html`, `styles.css` y `app.js`; el servidor Node está en `server.js`. La versión de escritorio con sockets TCP sigue disponible en `server.py` y `client.py`.
 
-El HTML, los estilos y el código del navegador están en `index.html`, `styles.css` y `app.js`, respectivamente. El servidor solo publica esos recursos y la página del juego.
+## Despliegue
 
-## Sala, invitación y duración
+El servidor escucha en `127.0.0.1` por defecto durante el desarrollo. En Render detecta automáticamente el entorno y escucha en `0.0.0.0`; usa el puerto indicado por `PORT`. Render asigna automáticamente la URL pública mediante `RENDER_EXTERNAL_URL`; el QR de una sala nueva apunta a esa dirección.
 
-Al abrir el juego, el primer jugador crea la sala. Puede copiar el enlace de invitación o compartir el QR; el segundo jugador entra desde ese enlace y el creador pulsa **Iniciar partida** cuando ambos estén conectados. El QR solo se muestra cuando se configura una dirección pública.
+Para otros proveedores, configura `HOST=0.0.0.0`, el puerto con `PORT` y la dirección pública HTTPS con `PUBLIC_URL`. El proxy inverso debe permitir conexiones WebSocket y conservar el encabezado `Host`.
 
-Cada partida dura **2 minutos**. El servidor es quien lleva el reloj y decide el resultado: gana quien tenga más puntos al terminar el tiempo. Si el marcador está empatado, empieza la **muerte súbita** y el siguiente punto decide al ganador. Después, el creador puede iniciar una nueva ronda.
-
-El servidor admite una sala de dos jugadores a la vez. El enlace contiene un código de invitación generado al iniciar el servidor; al reiniciar el proceso, se debe compartir el enlace/QR nuevo.
-
-## Configuración de red
-
-Por seguridad, el servidor escucha únicamente en `127.0.0.1` por defecto. Se pueden definir `HOST` y `PORT` antes de iniciarlo:
-
-```powershell
-$env:HOST = "0.0.0.0"
-$env:PORT = "8080"
-npm start
-```
-
-`0.0.0.0` permite conexiones de otros dispositivos en la red local; usa la dirección IP local del equipo en el navegador. El puerto `0` también se admite para pruebas y hace que el sistema operativo elija un puerto libre.
-
-Para jugar desde Internet, no expongas directamente el servidor Node en una red pública. Despliégalo detrás de un proxy inverso con TLS (HTTPS/WSS), reglas de firewall y un dominio configurado. En Render, el servidor usa automáticamente `RENDER_EXTERNAL_URL` para generar un QR válido. En otros proveedores, configura `PUBLIC_URL` con el origen HTTPS. El proxy debe conservar el encabezado `Host` para que la comprobación de origen WebSocket funcione.
-
-Ejemplo de variables de entorno en PowerShell para un servidor publicado:
-
-```powershell
-$env:HOST = "0.0.0.0"
-$env:PORT = "8080"
-$env:PUBLIC_URL = "https://tu-dominio.example"
-npm start
-```
-
-En un despliegue real, configura las mismas variables en el panel de tu proveedor y termina TLS en el proxy. El proxy debe reenviar las conexiones WebSocket (`Upgrade`/`Connection`). El código QR no es un sistema de autenticación: cualquier persona que obtenga el enlace puede intentar ocupar el puesto del segundo jugador.
-
-## Versión de escritorio con sockets TCP
-
-La versión original sigue disponible con `server.py` y `client.py`. Usa TCP (`SOCK_STREAM`) para conservar el orden y la entrega fiable de los controles y mensajes de partida. Para iniciarla, ejecuta `python server.py` y, en dos terminales adicionales, `python client.py`.
-
-Si la versión de escritorio sigue ejecutándose con `python server.py`, detenla primero: también usa el puerto 8080.
+Cada instancia mantiene las salas en memoria. Para que la búsqueda funcione entre anfitriones, todos deben usar la misma instancia del servicio. No escales el servicio a varias instancias sin añadir almacenamiento compartido y coordinación de salas.
